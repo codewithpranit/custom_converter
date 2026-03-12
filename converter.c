@@ -1887,6 +1887,8 @@ static int run_pipeline(const byte_t *utf8_in, int utf8_len) {
     printf("VERIFICATION: %s\n", ok ? "\xe2\x9c\x94 SUCCESS" : "\xe2\x9c\x98 FAILURE");
     if(!ok) { printf("  Input  len=%d\n  Output len=%d\n", utf8_len, utf8_out_len); }
 
+    printf("\nSummary: UTF-8 (%d bytes) -> Unicode (%d cps) -> ISCII (%d bytes) -> Acharya (%d bytes) -> ISCII (%d bytes) -> Unicode (%d cps) -> UTF-8 (%d bytes).\n", utf8_len, ncp, iscii1_len, nsyls * 2, iscii2_len, ncp2, utf8_out_len);
+
     free(cps); free(iscii1); free(syls); free(scripts); free(iscii2); free(cps2); free(utf8_out);
     return ok ? 0 : 1;
 }
@@ -1906,7 +1908,7 @@ static void func_utf8_to_acharya(const byte_t *utf8, int len) {
     int nsyls=0,nsc=0;
     construct_syllables(iscii,ilen,syls,&nsyls,sc,&nsc);
     printf("ACHARYA 2-BYTE:\n  "); print_acharya_bytes(syls,nsyls); printf("\n");
-    printf("\nSummary: UTF-8 (%d bytes) -> Unicode (%d cps) -> ISCII (%d bytes) -> Acharya (%d syls).\n", len, ncp, ilen, nsyls);
+    printf("\nSummary: UTF-8 (%d bytes) -> Unicode (%d cps) -> ISCII (%d bytes) -> Acharya (%d bytes).\n", len, ncp, ilen, nsyls * 2);
     free(cps);free(iscii);free(syls);free(sc);
 }
 
@@ -1921,7 +1923,7 @@ static void func_acharya_to_utf8(const syl_t *syls, int nsyls) {
     byte_t *utf8=(byte_t*)malloc(ncp*4+16); int ulen=0;
     int j; for(j=0;j<ncp;j++){int nb=encode_cp_to_utf8(cps[j],utf8+ulen);ulen+=nb;}
     printf("UTF-8 OUTPUT:\n  "); print_hex_bytes(utf8,ulen); printf("\n");
-    printf("\nSummary: Acharya (%d syls) -> ISCII (%d bytes) -> Unicode (%d cps) -> UTF-8 (%d bytes).\n", nsyls, ilen, ncp, ulen);
+    printf("\nSummary: Acharya (%d bytes) -> ISCII (%d bytes) -> Unicode (%d cps) -> UTF-8 (%d bytes).\n", nsyls * 2, ilen, ncp, ulen);
     free(iscii);free(cps);free(utf8);
 }
 
@@ -1930,7 +1932,7 @@ static void func_acharya_to_iscii(const syl_t *syls, int nsyls) {
     byte_t *iscii=(byte_t*)malloc(nsyls*16+256); int ilen=0;
     expand_syllables(syls,nsyls,iscii,&ilen);
     printf("ISCII OUTPUT:\n  "); print_hex_bytes(iscii,ilen); printf("\n");
-    printf("\nSummary: Acharya (%d syls) -> ISCII (%d bytes).\n", nsyls, ilen);
+    printf("\nSummary: Acharya (%d bytes) -> ISCII (%d bytes).\n", nsyls * 2, ilen);
     free(iscii);
 }
 
@@ -1941,7 +1943,7 @@ static void func_iscii_to_acharya(const byte_t *iscii, int len) {
     int nsyls=0,nsc=0;
     construct_syllables(iscii,len,syls,&nsyls,sc,&nsc);
     printf("ACHARYA 2-BYTE OUTPUT:\n  "); print_acharya_bytes(syls,nsyls); printf("\n");
-    printf("\nSummary: ISCII (%d bytes) -> Acharya (%d syls).\n", len, nsyls);
+    printf("\nSummary: ISCII (%d bytes) -> Acharya (%d bytes).\n", len, nsyls * 2);
     free(syls);free(sc);
 }
 
