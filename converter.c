@@ -1476,9 +1476,12 @@ static int unicode_to_iscii(const uint32_t *cps, int ncp, byte_t *out, int *out_
         if(cp == 0x0965) { out[n++] = 0xE7; continue; }
         imli_script_t s = script_from_codepoint(cp);
         if(s == SCRIPT_UNSUPPORTED) {
-            /* Pass through non-Indic non-ASCII codepoints as UTF-8 */
-            int nb = encode_cp_to_utf8(cp, out+n);
-            n += nb;
+            /* Store non-Indic non-ASCII codepoints as escape: 0xFD + 4 bytes (big-endian cp) */
+            out[n++] = 0xFD;
+            out[n++] = (byte_t)((cp >> 24) & 0xFF);
+            out[n++] = (byte_t)((cp >> 16) & 0xFF);
+            out[n++] = (byte_t)((cp >> 8) & 0xFF);
+            out[n++] = (byte_t)(cp & 0xFF);
             continue;
         }
         if(s != cur) { out[n++]=0xEF; out[n++]=iscii_code_from_script(s); cur=s; }
@@ -1498,6 +1501,13 @@ static int iscii_to_unicode(const byte_t *in, int len, uint32_t *out, int *out_l
         byte_t b = in[i];
         if(b == 0xEF && i+1<len) { imli_script_t s=script_from_iscii_code(in[i+1]); if(s!=SCRIPT_UNSUPPORTED) cur=s; i++; continue; }
         if(b < 0x80) { out[n++] = b; continue; }
+        /* Non-indic escape: 0xFD + 4 bytes codepoint */
+        if(b == 0xFD && i+4<len) {
+            uint32_t cp2 = ((uint32_t)in[i+1]<<24)|((uint32_t)in[i+2]<<16)|((uint32_t)in[i+3]<<8)|in[i+4];
+            out[n++] = cp2;
+            i += 4;
+            continue;
+        }
         /* Danda and double-danda always map to U+0964/U+0965 */
         if(b == 0xE6) { out[n++] = 0x0964; continue; }
         if(b == 0xE7) { out[n++] = 0x0965; continue; }
@@ -1652,8 +1662,19 @@ static int construct_syllables(const byte_t *iscii, int len, syl_t *syls, int *n
         }
 
         /* Danda (0xE6) and double-danda (0xE7) - store as special markers */
+        /* Danda (0xE6) and double-danda (0xE7) - store as special markers */
         if(b==0xE6 || b==0xE7) {
             syls[ns++] = SPECIAL_START | b;
+            prev_syl = SYL_INVALID;
+            continue;
+        }
+
+        /* Non-indic Escape (0xFD) + 4 bytes codepoint */
+        if(b==0xFD && i+4<len) {
+            syls[ns++] = SPECIAL_START | b;
+            syls[ns++] = (iscii[i+1] << 8) | iscii[i+2];
+            syls[ns++] = (iscii[i+3] << 8) | iscii[i+4];
+            i += 4;
             prev_syl = SYL_INVALID;
             continue;
         }
@@ -1756,6 +1777,15 @@ static int expand_syllables(const syl_t *syls, int nsyls, byte_t *out, int *out_
             byte_t low = lch & 0xFF;
             /* Danda/double-danda stored as SPECIAL_START | byte */
             if(low == 0xE6 || low == 0xE7) { *p++ = low; }
+            /* Non-indic Escape */
+            else if(low == 0xFD && i+2<nsyls) {
+                syl_t s1 = syls[++i], s2 = syls[++i];
+                *p++ = 0xFD;
+                *p++ = (s1 >> 8) & 0xFF;
+                *p++ = s1 & 0xFF;
+                *p++ = (s2 >> 8) & 0xFF;
+                *p++ = s2 & 0xFF;
+            }
             else if(Cj==0){
                 if(V==15){if(cur_lang==SCRIPT_BANGLA||cur_lang==SCRIPT_KANNADA||cur_lang==SCRIPT_HINDI||cur_lang==SCRIPT_ASAMIYA||cur_lang==SCRIPT_MARATHI)*p++=0xAE;if(cur_lang==SCRIPT_MARATHI)*p++=0xE9;}
                 else if(low < sizeof(imli_to_iscii_spl)/sizeof(imli_to_iscii_spl[0])) *p++=imli_to_iscii_spl[low];

@@ -579,8 +579,19 @@ static int construct_syllables(const byte_t *iscii, int len, syl_t *syls, int *n
         }
 
         /* Danda (0xE6) and double-danda (0xE7) - store as special markers */
+        /* Danda (0xE6) and double-danda (0xE7) - store as special markers */
         if(b==0xE6 || b==0xE7) {
             syls[ns++] = SPECIAL_START | b;
+            prev_syl = SYL_INVALID;
+            continue;
+        }
+
+        /* Non-indic Escape (0xFD) + 4 bytes codepoint */
+        if(b==0xFD && i+4<len) {
+            syls[ns++] = SPECIAL_START | b;
+            syls[ns++] = (iscii[i+1] << 8) | iscii[i+2];
+            syls[ns++] = (iscii[i+3] << 8) | iscii[i+4];
+            i += 4;
             prev_syl = SYL_INVALID;
             continue;
         }
@@ -683,6 +694,15 @@ static int expand_syllables(const syl_t *syls, int nsyls, byte_t *out, int *out_
             byte_t low = lch & 0xFF;
             /* Danda/double-danda stored as SPECIAL_START | byte */
             if(low == 0xE6 || low == 0xE7) { *p++ = low; }
+            /* Non-indic Escape */
+            else if(low == 0xFD && i+2<nsyls) {
+                syl_t s1 = syls[++i], s2 = syls[++i];
+                *p++ = 0xFD;
+                *p++ = (s1 >> 8) & 0xFF;
+                *p++ = s1 & 0xFF;
+                *p++ = (s2 >> 8) & 0xFF;
+                *p++ = s2 & 0xFF;
+            }
             else if(Cj==0){
                 if(V==15){if(cur_lang==SCRIPT_BANGLA||cur_lang==SCRIPT_KANNADA||cur_lang==SCRIPT_HINDI||cur_lang==SCRIPT_ASAMIYA||cur_lang==SCRIPT_MARATHI)*p++=0xAE;if(cur_lang==SCRIPT_MARATHI)*p++=0xE9;}
                 else if(low < sizeof(imli_to_iscii_spl)/sizeof(imli_to_iscii_spl[0])) *p++=imli_to_iscii_spl[low];
