@@ -393,8 +393,13 @@ static int unicode_to_iscii(const uint32_t *cps, int ncp, byte_t *out, int *out_
         uint32_t cp = cps[i];
         if(cp < 0x80) { out[n++] = (byte_t)cp; continue; }
         /* Danda and double-danda are shared across all scripts (in Devanagari block) */
-        if(cp == 0x0964) { out[n++] = 0xE6; continue; }
-        if(cp == 0x0965) { out[n++] = 0xE7; continue; }
+        if(cp == 0x0964 || cp == 0x0965) {
+            if(cur == SCRIPT_ASCII || cur == SCRIPT_UNSUPPORTED) {
+                out[n++]=0xEF; out[n++]=iscii_code_from_script(SCRIPT_HINDI); cur=SCRIPT_HINDI;
+            }
+            out[n++] = (cp == 0x0964) ? 0xE6 : 0xE7;
+            continue;
+        }
         imli_script_t s = script_from_codepoint(cp);
         if(s == SCRIPT_UNSUPPORTED) {
             if(cur != SCRIPT_ASCII) { out[n++]=0xEF; out[n++]=0x41; cur=SCRIPT_ASCII; }
@@ -540,7 +545,7 @@ static int construct_syllables(const byte_t *iscii, int len, syl_t *syls, int *n
     int i, ns=0, nsc=0;
     syl_t prev_syl = SYL_INVALID;
     imli_script_t prev_script = SCRIPT_HINDI;
-    imli_script_t cur_script = SCRIPT_ASCII;
+    imli_script_t cur_script = SCRIPT_HINDI;
     active_script = cur_script;
 
     for(i=0;i<len;i++) {
@@ -555,11 +560,8 @@ static int construct_syllables(const byte_t *iscii, int len, syl_t *syls, int *n
 
         /* ASCII and UTF-8 Passthrough in SCRIPT_ASCII mode */
         if(b < 128 || (cur_script == SCRIPT_ASCII && b != 0xEF)) {
-            if(cur_script != SCRIPT_ASCII) {
-                prev_script = cur_script; cur_script = SCRIPT_ASCII;
-                active_script = cur_script; prev_syl = SYL_INVALID;
-            }
             syls[ns++] = ASCII_START + b;
+            prev_syl = SYL_INVALID;
             continue;
         }
 
