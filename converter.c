@@ -1631,8 +1631,21 @@ static int construct_syllables(const byte_t *iscii, int len, syl_t *syls, int *n
     int i, ns=0, nsc=0;
     syl_t prev_syl = SYL_INVALID;
     imli_script_t prev_script = SCRIPT_HINDI;
+    
+    /* Peek at first byte to determine initial script */
     imli_script_t cur_script = SCRIPT_HINDI;
+    if (len > 0) {
+        if (iscii[0] < 128 || isspace(iscii[0])) cur_script = SCRIPT_ASCII;
+        else if (iscii[0] == 0xEF && len > 1) {
+            imli_script_t sc = script_from_iscii_code(iscii[1]);
+            if (sc != SCRIPT_UNSUPPORTED) cur_script = sc;
+        }
+    }
     active_script = cur_script;
+    
+    /* Inject initial script token for Acharya byte stream */
+    syls[ns++] = SWITCH_CODE | (byte_t)cur_script;
+    scripts[nsc++] = cur_script;
 
     for(i=0;i<len;i++) {
         byte_t b = iscii[i];

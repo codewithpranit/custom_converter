@@ -81,8 +81,37 @@ new_i2u = """        if(b == 0xEF && i+1<len) { imli_script_t s=script_from_isci
         }"""
 code = code.replace(old_i2u, new_i2u)
 
-# 4. Remove 0xFD from construct_syllables
-old_cs = """        /* Non-indic Escape (0xFD) + 4 bytes codepoint */
+# 4. Remove 0xFD from construct_syllables and add initial switch code
+old_cs = """    int i, ns=0, nsc=0;
+    syl_t prev_syl = SYL_INVALID;
+    imli_script_t prev_script = SCRIPT_HINDI;
+    imli_script_t cur_script = SCRIPT_HINDI;
+    active_script = cur_script;
+
+    for(i=0;i<len;i++) {"""
+new_cs = """    int i, ns=0, nsc=0;
+    syl_t prev_syl = SYL_INVALID;
+    imli_script_t prev_script = SCRIPT_HINDI;
+    
+    /* Peek at first byte to determine initial script */
+    imli_script_t cur_script = SCRIPT_HINDI;
+    if (len > 0) {
+        if (iscii[0] < 128 || isspace(iscii[0])) cur_script = SCRIPT_ASCII;
+        else if (iscii[0] == 0xEF && len > 1) {
+            imli_script_t sc = script_from_iscii_code(iscii[1]);
+            if (sc != SCRIPT_UNSUPPORTED) cur_script = sc;
+        }
+    }
+    active_script = cur_script;
+    
+    /* Inject initial script token for Acharya byte stream */
+    syls[ns++] = SWITCH_CODE | (byte_t)cur_script;
+    scripts[nsc++] = cur_script;
+
+    for(i=0;i<len;i++) {"""
+code = code.replace(old_cs, new_cs)
+
+old_cs_fd = """        /* Non-indic Escape (0xFD) + 4 bytes codepoint */
         if(b==0xFD && i+4<len) {
             syls[ns++] = SPECIAL_START | b;
             syls[ns++] = (iscii[i+1] << 8) | iscii[i+2];
@@ -91,7 +120,7 @@ old_cs = """        /* Non-indic Escape (0xFD) + 4 bytes codepoint */
             prev_syl = SYL_INVALID;
             continue;
         }\n\n"""
-code = code.replace(old_cs, "")
+code = code.replace(old_cs_fd, "")
 
 # 5. Remove 0xFD from expand_syllables
 old_es = """            /* Non-indic Escape */
