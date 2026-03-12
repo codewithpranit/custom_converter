@@ -134,18 +134,8 @@ old_es = """            /* Non-indic Escape */
             }\n"""
 code = code.replace(old_es, "")
 
-# 6. Update print_usage to show examples
+# 6. Update print_usage to show updated examples
 old_usage = """static void print_usage(const char *prog) {
-    printf("Usage:\\n");
-    printf("  %s pipeline <file.txt>\\n", prog);
-    printf("  %s utf8_to_acharya <file.txt>\\n", prog);
-    printf("  %s acharya_to_utf8 <hex_syls>\\n", prog);
-    printf("  %s acharya_to_iscii <hex_syls>\\n", prog);
-    printf("  %s iscii_to_acharya <hex_bytes>\\n", prog);
-    printf("  %s utf8_to_iscii <file.txt>\\n", prog);
-    printf("  %s iscii_to_utf8 <hex_bytes>\\n", prog);
-}"""
-new_usage = """static void print_usage(const char *prog) {
     printf("Usage:\\n");
     printf("  %s pipeline <file.txt>\\n", prog);
     printf("  %s utf8_to_acharya <file.txt>\\n", prog);
@@ -158,6 +148,20 @@ new_usage = """static void print_usage(const char *prog) {
     printf("  %s utf8_to_iscii <file.txt>\\n", prog);
     printf("  %s iscii_to_utf8 <hex_bytes>\\n", prog);
     printf("    // Example - %s iscii_to_utf8 \\"EF 42 B3 E8 D6 C2 E8 CF DB CD\\"\\n", prog);
+}"""
+new_usage = """static void print_usage(const char *prog) {
+    printf("Usage:\\n");
+    printf("  %s pipeline <file.txt>\\n", prog);
+    printf("  %s utf8_to_acharya <file.txt>\\n", prog);
+    printf("  %s acharya_to_utf8 <hex_syls>\\n", prog);
+    printf("    // Example - %s acharya_to_utf8 \\"0xFA 0x01 0xB4 0x00 0x41 0xD2 0x70 0x00\\"\\n", prog);
+    printf("  %s acharya_to_iscii <hex_syls>\\n", prog);
+    printf("    // Example - %s acharya_to_iscii \\"0xFA 0x01 0xB4 0x00 0x41 0xD2 0x70 0x00\\"\\n", prog);
+    printf("  %s iscii_to_acharya <hex_bytes>\\n", prog);
+    printf("    // Example - %s iscii_to_acharya \\"0xEF 0x42 0xB3 0xE8 0xD6 0xC2 0xE8 0xCF 0xDB 0xCD\\"\\n", prog);
+    printf("  %s utf8_to_iscii <file.txt>\\n", prog);
+    printf("  %s iscii_to_utf8 <hex_bytes>\\n", prog);
+    printf("    // Example - %s iscii_to_utf8 \\"0xEF 0x42 0xB3 0xE8 0xD6 0xC2 0xE8 0xCF 0xDB 0xCD\\"\\n", prog);
 }"""
 code = code.replace(old_usage, new_usage)
 
@@ -187,22 +191,112 @@ code = code.replace(
     'printf("ISCII OUTPUT:\\n  "); print_hex_bytes(iscii,ilen); printf("\\n");\n    printf("\\nSummary: UTF-8 (%d bytes) -> Unicode (%d cps) -> ISCII (%d bytes).\\n", len, ncp, ilen);\n    free(cps);free(iscii);'
 )
 
-code = code.replace(
-    'printf("UTF-8 OUTPUT:\\n  "); print_hex_bytes(utf8,ulen); printf("\\n");\n    printf("\\nSummary: ISCII (%d bytes) -> Unicode (%d cps) -> UTF-8 (%d bytes).\\n", len, ncp, ulen);\n    free(cps);free(utf8);',
-    'printf("UTF-8 OUTPUT:\\n  "); print_hex_bytes(utf8,ulen); printf("\\n");\n    printf("\\nSummary: ISCII (%d bytes) -> Unicode (%d cps) -> UTF-8 (%d bytes).\\n", len, ncp, ulen);\n    free(cps);free(utf8);'
-)
-
 # 8. Add UTF-8 INPUT header to utf8 related funcs
-code = code.replace(
-    'static void func_utf8_to_acharya(const byte_t *utf8, int len) {',
-    'static void func_utf8_to_acharya(const byte_t *utf8, int len) {\n    printf("UTF-8 INPUT:\\n  "); print_hex_bytes(utf8,len); printf("\\n\\n");'
-)
+if 'printf("UTF-8 INPUT:\\n  ");' not in code:
+    code = code.replace(
+        'static void func_utf8_to_acharya(const byte_t *utf8, int len) {',
+        'static void func_utf8_to_acharya(const byte_t *utf8, int len) {\n    printf("UTF-8 INPUT:\\n  "); print_hex_bytes(utf8,len); printf("\\n\\n");'
+    )
 
-code = code.replace(
-    'static void func_utf8_to_iscii(const byte_t *utf8, int len) {',
-    'static void func_utf8_to_iscii(const byte_t *utf8, int len) {\n    printf("UTF-8 INPUT:\\n  "); print_hex_bytes(utf8,len); printf("\\n\\n");'
-)
+    code = code.replace(
+        'static void func_utf8_to_iscii(const byte_t *utf8, int len) {',
+        'static void func_utf8_to_iscii(const byte_t *utf8, int len) {\n    printf("UTF-8 INPUT:\\n  "); print_hex_bytes(utf8,len); printf("\\n\\n");'
+    )
+
+# 9. Update printing and parsing for 0x format
+old_print_hex = """static void print_hex_bytes(const byte_t *data, int len) {
+    int i; for(i=0;i<len;i++) { if(i>0) printf(" "); printf("%02X",data[i]); }
+}"""
+new_print_hex = """static void print_hex_bytes(const byte_t *data, int len) {
+    int i; for(i=0;i<len;i++) { if(i>0) printf(" "); printf("0x%02X",data[i]); }
+}"""
+code = code.replace(old_print_hex, new_print_hex)
+
+old_print_syls = """static void print_syllables(const syl_t *syls, int n) {
+    int i; for(i=0;i<n;i++) {
+        if(i>0) printf(" ");
+        if(IS_SYL_ASCII(syls[i])) printf("{%02X}",(unsigned)(syls[i]&0xFF));
+        else if(IS_SYL_SWITCH(syls[i])) printf("{SWITCH:%d}",(int)(syls[i]&0xFF));
+        else printf("{%04X}",(unsigned)syls[i]);
+    }
+}"""
+new_print_syls = """static void print_syllables(const syl_t *syls, int n) {
+    int i; for(i=0;i<n;i++) {
+        if(i>0) printf(" ");
+        if(IS_SYL_ASCII(syls[i])) printf("{0x%02X}",(unsigned)(syls[i]&0xFF));
+        else if(IS_SYL_SWITCH(syls[i])) printf("{SWITCH:%d}",(int)(syls[i]&0xFF));
+        else printf("{0x%04X}",(unsigned)syls[i]);
+    }
+}"""
+code = code.replace(old_print_syls, new_print_syls)
+
+old_print_acharya = """static void print_acharya_bytes(const syl_t *syls, int n) {
+    int i; for(i=0;i<n;i++) {
+        if(i>0) printf(" ");
+        byte_t hi=(syls[i]>>8)&0xFF, lo=syls[i]&0xFF;
+        printf("%02X%02X",hi,lo);
+    }
+}"""
+new_print_acharya = """static void print_acharya_bytes(const syl_t *syls, int n) {
+    int i; for(i=0;i<n;i++) {
+        if(i>0) printf(" ");
+        byte_t hi=(syls[i]>>8)&0xFF, lo=syls[i]&0xFF;
+        printf("0x%02X 0x%02X",hi,lo);
+    }
+}"""
+code = code.replace(old_print_acharya, new_print_acharya)
+
+old_parse_hex = """static int parse_hex_bytes(const char *s, byte_t *out) {
+    int n=0; unsigned int v;
+    while(*s) {
+        while(*s&&(isspace(*s)||*s==','||*s=='|')) s++;
+        if(!*s) break;
+        if(sscanf(s,"%x",&v)==1) { out[n++]=(byte_t)v; while(*s&&!isspace(*s)&&*s!=','&&*s!='|') s++; }
+        else break;
+    }
+    return n;
+}"""
+new_parse_hex = """static int parse_hex_bytes(const char *s, byte_t *out) {
+    int n=0; unsigned int v;
+    while(*s) {
+        while(*s&&(isspace(*s)||*s==','||*s=='|')) s++;
+        if(!*s) break;
+        if(strncmp(s, "0x", 2) == 0) s += 2;
+        if(sscanf(s,"%2x",&v)==1) { out[n++]=(byte_t)v; while(*s&&!isspace(*s)&&*s!=','&&*s!='|') s++; }
+        else break;
+    }
+    return n;
+}"""
+code = code.replace(old_parse_hex, new_parse_hex)
+
+old_parse_syls = """static int parse_hex_syls(const char *s, syl_t *out) {
+    int n=0; unsigned int v;
+    while(*s) {
+        while(*s&&(isspace(*s)||*s==','||*s=='|')) s++;
+        if(!*s) break;
+        if(sscanf(s,"%x",&v)==1) { out[n++]=(syl_t)v; while(*s&&!isspace(*s)&&*s!=','&&*s!='|') s++; }
+        else break;
+    }
+    return n;
+}"""
+new_parse_syls = """static int parse_hex_syls(const char *s, syl_t *out) {
+    int n=0; unsigned int v1, v2;
+    while(*s) {
+        while(*s&&(isspace(*s)||*s==','||*s=='|')) s++;
+        if(!*s) break;
+        if(strncmp(s, "0x", 2) == 0) s += 2;
+        if(sscanf(s, "%2x", &v1) != 1) break;
+        while(*s&&!isspace(*s)&&*s!=','&&*s!='|') s++;
+        while(*s&&(isspace(*s)||*s==','||*s=='|')) s++;
+        if(!*s) break;
+        if(strncmp(s, "0x", 2) == 0) s += 2;
+        if(sscanf(s, "%2x", &v2) != 1) break;
+        out[n++] = (syl_t)((v1 << 8) | v2);
+        while(*s&&!isspace(*s)&&*s!=','&&*s!='|') s++;
+    }
+    return n;
+}"""
+code = code.replace(old_parse_syls, new_parse_syls)
 
 with open('build_converter.py', 'w') as f:
     f.write(code)
-

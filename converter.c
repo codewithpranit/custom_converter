@@ -1832,7 +1832,7 @@ static int expand_syllables(const syl_t *syls, int nsyls, byte_t *out, int *out_
  * Print helpers
  * ============================================================ */
 static void print_hex_bytes(const byte_t *data, int len) {
-    int i; for(i=0;i<len;i++) { if(i>0) printf(" "); printf("%02X",data[i]); }
+    int i; for(i=0;i<len;i++) { if(i>0) printf(" "); printf("0x%02X",data[i]); }
 }
 
 static void print_codepoints(const uint32_t *cps, int n) {
@@ -1842,9 +1842,9 @@ static void print_codepoints(const uint32_t *cps, int n) {
 static void print_syllables(const syl_t *syls, int n) {
     int i; for(i=0;i<n;i++) {
         if(i>0) printf(" ");
-        if(IS_SYL_ASCII(syls[i])) printf("{%02X}",(unsigned)(syls[i]&0xFF));
+        if(IS_SYL_ASCII(syls[i])) printf("{0x%02X}",(unsigned)(syls[i]&0xFF));
         else if(IS_SYL_SWITCH(syls[i])) printf("{SWITCH:%d}",(int)(syls[i]&0xFF));
-        else printf("{%04X}",(unsigned)syls[i]);
+        else printf("{0x%04X}",(unsigned)syls[i]);
     }
 }
 
@@ -1852,7 +1852,7 @@ static void print_acharya_bytes(const syl_t *syls, int n) {
     int i; for(i=0;i<n;i++) {
         if(i>0) printf(" ");
         byte_t hi=(syls[i]>>8)&0xFF, lo=syls[i]&0xFF;
-        printf("%02X%02X",hi,lo);
+        printf("0x%02X 0x%02X",hi,lo);
     }
 }
 
@@ -2000,19 +2000,27 @@ static int parse_hex_bytes(const char *s, byte_t *out) {
     while(*s) {
         while(*s&&(isspace(*s)||*s==','||*s=='|')) s++;
         if(!*s) break;
-        if(sscanf(s,"%x",&v)==1) { out[n++]=(byte_t)v; while(*s&&!isspace(*s)&&*s!=','&&*s!='|') s++; }
+        if(strncmp(s, "0x", 2) == 0) s += 2;
+        if(sscanf(s,"%2x",&v)==1) { out[n++]=(byte_t)v; while(*s&&!isspace(*s)&&*s!=','&&*s!='|') s++; }
         else break;
     }
     return n;
 }
 
 static int parse_hex_syls(const char *s, syl_t *out) {
-    int n=0; unsigned int v;
+    int n=0; unsigned int v1, v2;
     while(*s) {
         while(*s&&(isspace(*s)||*s==','||*s=='|')) s++;
         if(!*s) break;
-        if(sscanf(s,"%x",&v)==1) { out[n++]=(syl_t)v; while(*s&&!isspace(*s)&&*s!=','&&*s!='|') s++; }
-        else break;
+        if(strncmp(s, "0x", 2) == 0) s += 2;
+        if(sscanf(s, "%2x", &v1) != 1) break;
+        while(*s&&!isspace(*s)&&*s!=','&&*s!='|') s++;
+        while(*s&&(isspace(*s)||*s==','||*s=='|')) s++;
+        if(!*s) break;
+        if(strncmp(s, "0x", 2) == 0) s += 2;
+        if(sscanf(s, "%2x", &v2) != 1) break;
+        out[n++] = (syl_t)((v1 << 8) | v2);
+        while(*s&&!isspace(*s)&&*s!=','&&*s!='|') s++;
     }
     return n;
 }
@@ -2036,14 +2044,14 @@ static void print_usage(const char *prog) {
     printf("  %s pipeline <file.txt>\n", prog);
     printf("  %s utf8_to_acharya <file.txt>\n", prog);
     printf("  %s acharya_to_utf8 <hex_syls>\n", prog);
-    printf("    // Example - %s acharya_to_utf8 \"FA01 B400 41D2 7000\"\n", prog);
+    printf("    // Example - %s acharya_to_utf8 \"0xFA 0x01 0xB4 0x00 0x41 0xD2 0x70 0x00\"\n", prog);
     printf("  %s acharya_to_iscii <hex_syls>\n", prog);
-    printf("    // Example - %s acharya_to_iscii \"FA01 B400 41D2 7000\"\n", prog);
+    printf("    // Example - %s acharya_to_iscii \"0xFA 0x01 0xB4 0x00 0x41 0xD2 0x70 0x00\"\n", prog);
     printf("  %s iscii_to_acharya <hex_bytes>\n", prog);
-    printf("    // Example - %s iscii_to_acharya \"EF 42 B3 E8 D6 C2 E8 CF DB CD\"\n", prog);
+    printf("    // Example - %s iscii_to_acharya \"0xEF 0x42 0xB3 0xE8 0xD6 0xC2 0xE8 0xCF 0xDB 0xCD\"\n", prog);
     printf("  %s utf8_to_iscii <file.txt>\n", prog);
     printf("  %s iscii_to_utf8 <hex_bytes>\n", prog);
-    printf("    // Example - %s iscii_to_utf8 \"EF 42 B3 E8 D6 C2 E8 CF DB CD\"\n", prog);
+    printf("    // Example - %s iscii_to_utf8 \"0xEF 0x42 0xB3 0xE8 0xD6 0xC2 0xE8 0xCF 0xDB 0xCD\"\n", prog);
 }
 
 int main(int argc, char **argv) {
