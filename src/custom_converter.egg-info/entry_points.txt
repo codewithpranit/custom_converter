@@ -1,0 +1,2 @@
+[console_scripts]
+custom-converter = custom_converter.__main__:main

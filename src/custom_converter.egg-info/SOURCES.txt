@@ -1,0 +1,12 @@
+LICENSE
+README.md
+pyproject.toml
+src/custom_converter/__init__.py
+src/custom_converter/__main__.py
+src/custom_converter/converter_wrapper.py
+src/custom_converter.egg-info/PKG-INFO
+src/custom_converter.egg-info/SOURCES.txt
+src/custom_converter.egg-info/dependency_links.txt
+src/custom_converter.egg-info/entry_points.txt
+src/custom_converter.egg-info/top_level.txt
+src/custom_converter/resources/converter.c
