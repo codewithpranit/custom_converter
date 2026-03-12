@@ -188,8 +188,19 @@ code = code.replace(
 )
 
 code = code.replace(
-    'printf("UTF-8 OUTPUT:\\n  "); print_hex_bytes(utf8,ulen); printf("\\n");\n    free(cps);free(utf8);',
+    'printf("UTF-8 OUTPUT:\\n  "); print_hex_bytes(utf8,ulen); printf("\\n");\n    printf("\\nSummary: ISCII (%d bytes) -> Unicode (%d cps) -> UTF-8 (%d bytes).\\n", len, ncp, ulen);\n    free(cps);free(utf8);',
     'printf("UTF-8 OUTPUT:\\n  "); print_hex_bytes(utf8,ulen); printf("\\n");\n    printf("\\nSummary: ISCII (%d bytes) -> Unicode (%d cps) -> UTF-8 (%d bytes).\\n", len, ncp, ulen);\n    free(cps);free(utf8);'
+)
+
+# 8. Add UTF-8 INPUT header to utf8 related funcs
+code = code.replace(
+    'static void func_utf8_to_acharya(const byte_t *utf8, int len) {',
+    'static void func_utf8_to_acharya(const byte_t *utf8, int len) {\n    printf("UTF-8 INPUT:\\n  "); print_hex_bytes(utf8,len); printf("\\n\\n");'
+)
+
+code = code.replace(
+    'static void func_utf8_to_iscii(const byte_t *utf8, int len) {',
+    'static void func_utf8_to_iscii(const byte_t *utf8, int len) {\n    printf("UTF-8 INPUT:\\n  "); print_hex_bytes(utf8,len); printf("\\n\\n");'
 )
 
 with open('build_converter.py', 'w') as f:

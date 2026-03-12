@@ -836,6 +836,7 @@ static int run_pipeline(const byte_t *utf8_in, int utf8_len) {
  * Conversion functions
  * ============================================================ */
 static void func_utf8_to_acharya(const byte_t *utf8, int len) {
+    printf("UTF-8 INPUT:\n  "); print_hex_bytes(utf8,len); printf("\n\n");
     uint32_t *cps=(uint32_t*)malloc(len*sizeof(uint32_t)); int ncp=0;
     decode_utf8(utf8,len,cps,&ncp);
     printf("UNICODE CODE POINTS:\n  "); print_codepoints(cps,ncp); printf("\n\n");
@@ -887,6 +888,7 @@ static void func_iscii_to_acharya(const byte_t *iscii, int len) {
 }
 
 static void func_utf8_to_iscii(const byte_t *utf8, int len) {
+    printf("UTF-8 INPUT:\n  "); print_hex_bytes(utf8,len); printf("\n\n");
     uint32_t *cps=(uint32_t*)malloc(len*sizeof(uint32_t)); int ncp=0;
     decode_utf8(utf8,len,cps,&ncp);
     printf("UNICODE CODE POINTS:\n  "); print_codepoints(cps,ncp); printf("\n\n");
