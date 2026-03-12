@@ -402,11 +402,15 @@ static int unicode_to_iscii(const uint32_t *cps, int ncp, byte_t *out, int *out_
             n += nb;
             continue;
         }
-        if(s != cur) { out[n++]=0xEF; out[n++]=iscii_code_from_script(s); cur=s; }
         uint32_t base = unicode_base_for_script(s);
         uint32_t offset = cp - base;
         if(offset < 0x80 && unicode_offset_to_iscii[offset]) {
+            if(s != cur) { out[n++]=0xEF; out[n++]=iscii_code_from_script(s); cur=s; }
             out[n++] = unicode_offset_to_iscii[offset];
+        } else {
+            if(cur != SCRIPT_ASCII) { out[n++]=0xEF; out[n++]=0x41; cur=SCRIPT_ASCII; }
+            int nb = encode_cp_to_utf8(cp, out+n);
+            n += nb;
         }
     }
     *out_len = n; return 0;

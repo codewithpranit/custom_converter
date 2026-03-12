@@ -26,12 +26,28 @@ old_u2i = """        if(s == SCRIPT_UNSUPPORTED) {
             out[n++] = (byte_t)((cp >> 8) & 0xFF);
             out[n++] = (byte_t)(cp & 0xFF);
             continue;
+        }
+        if(s != cur) { out[n++]=0xEF; out[n++]=iscii_code_from_script(s); cur=s; }
+        uint32_t base = unicode_base_for_script(s);
+        uint32_t offset = cp - base;
+        if(offset < 0x80 && unicode_offset_to_iscii[offset]) {
+            out[n++] = unicode_offset_to_iscii[offset];
         }"""
 new_u2i = """        if(s == SCRIPT_UNSUPPORTED) {
             if(cur != SCRIPT_ASCII) { out[n++]=0xEF; out[n++]=0x41; cur=SCRIPT_ASCII; }
             int nb = encode_cp_to_utf8(cp, out+n);
             n += nb;
             continue;
+        }
+        uint32_t base = unicode_base_for_script(s);
+        uint32_t offset = cp - base;
+        if(offset < 0x80 && unicode_offset_to_iscii[offset]) {
+            if(s != cur) { out[n++]=0xEF; out[n++]=iscii_code_from_script(s); cur=s; }
+            out[n++] = unicode_offset_to_iscii[offset];
+        } else {
+            if(cur != SCRIPT_ASCII) { out[n++]=0xEF; out[n++]=0x41; cur=SCRIPT_ASCII; }
+            int nb = encode_cp_to_utf8(cp, out+n);
+            n += nb;
         }"""
 code = code.replace(old_u2i, new_u2i)
 
