@@ -1,0 +1,27 @@
+INPUT (UTF-8):
+  E0 A4 95 E0 A5 8D E0 A4 B7 E0 A4 A4 E0 A5 8D E0 A4 B0 E0 A4 BF E0 A4 AF
+
+UNICODE CODE POINTS:
+  U+0915 U+094D U+0937 U+0924 U+094D U+0930 U+093F U+092F
+
+ISCII BYTE STREAM (with script switches injected):
+  EF 42 B3 E8 D6 C2 E8 CF DB CD
+
+SYLLABLE STRUCTS (construct_syllables):
+  {B400} {41D2} {7000}
+
+ACHARYA 2-BYTE CODES (internal script tokens inserted):
+  B400 41D2 7000
+
+EXPANDED ISCII (expand_syllables):
+  B3 E8 D6 C2 E8 CF DB CD
+
+BACK TO UNICODE:
+  U+0915 U+094D U+0937 U+0924 U+094D U+0930 U+093F U+092F
+
+OUTPUT (UTF-8):
+  E0 A4 95 E0 A5 8D E0 A4 B7 E0 A4 A4 E0 A5 8D E0 A4 B0 E0 A4 BF E0 A4 AF
+
+VERIFICATION: ✔ SUCCESS
+
+Summary: UTF-8 (24 bytes) -> Unicode (8 cps) -> ISCII (10 bytes) -> Acharya (6 bytes) -> ISCII (8 bytes) -> Unicode (8 cps) -> UTF-8 (24 bytes).

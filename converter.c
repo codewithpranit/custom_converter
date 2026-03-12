@@ -1474,7 +1474,10 @@ static int unicode_to_iscii(const uint32_t *cps, int ncp, byte_t *out, int *out_
     imli_script_t cur = SCRIPT_UNSUPPORTED;
     for(i=0;i<ncp;i++) {
         uint32_t cp = cps[i];
-        if(cp < 0x80) { out[n++] = (byte_t)cp; continue; }
+        if(cp < 0x80) { 
+            if(cur != SCRIPT_ASCII && cur != SCRIPT_UNSUPPORTED) { out[n++]=0xEF; out[n++]=0x41; cur=SCRIPT_ASCII; }
+            out[n++] = (byte_t)cp; continue; 
+        }
         /* Danda and double-danda are shared across all scripts (in Devanagari block) */
         if(cp == 0x0964 || cp == 0x0965) {
             if(cur == SCRIPT_ASCII || cur == SCRIPT_UNSUPPORTED) {
@@ -1862,7 +1865,7 @@ static int run_pipeline(const byte_t *utf8_in, int utf8_len) {
 
     /* Step 4: ISCII -> Acharya syllables */
     syl_t *syls = (syl_t*)malloc((iscii1_len+256) * sizeof(syl_t));
-    imli_script_t *scripts = (imli_script_t*)malloc(256*sizeof(imli_script_t));
+    imli_script_t *scripts = (imli_script_t*)malloc((iscii1_len+256)*sizeof(imli_script_t));
     int nsyls=0, nscripts=0;
     construct_syllables(iscii1, iscii1_len, syls, &nsyls, scripts, &nscripts);
     printf("SYLLABLE STRUCTS (construct_syllables):\n  "); print_syllables(syls, nsyls); printf("\n\n");
@@ -1910,7 +1913,7 @@ static void func_utf8_to_acharya(const byte_t *utf8, int len) {
     unicode_to_iscii(cps,ncp,iscii,&ilen);
     printf("ISCII BYTE STREAM:\n  "); print_hex_bytes(iscii,ilen); printf("\n\n");
     syl_t *syls=(syl_t*)malloc((ilen+256)*sizeof(syl_t));
-    imli_script_t *sc=(imli_script_t*)malloc(256*sizeof(imli_script_t));
+    imli_script_t *sc=(imli_script_t*)malloc((len+256)*sizeof(imli_script_t));
     int nsyls=0,nsc=0;
     construct_syllables(iscii,ilen,syls,&nsyls,sc,&nsc);
     printf("ACHARYA 2-BYTE:\n  "); print_acharya_bytes(syls,nsyls); printf("\n");

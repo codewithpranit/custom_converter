@@ -163,6 +163,67 @@ code = code.replace(
     'printf("UTF-8 OUTPUT:\\n  "); print_hex_bytes(utf8,ulen); printf("\\n");\n    printf("\\nSummary: ISCII (%d bytes) -> Unicode (%d cps) -> UTF-8 (%d bytes).\\n", len, ncp, ulen);\n    free(cps);free(utf8);'
 )
 
+# 8. Fix tracking of ASCII tokens and Danda switches
+old_u2i_danda = """        uint32_t cp = cps[i];
+        if(cp < 0x80) { out[n++] = (byte_t)cp; continue; }
+        /* Danda and double-danda are shared across all scripts (in Devanagari block) */
+        if(cp == 0x0964) { out[n++] = 0xE6; continue; }
+        if(cp == 0x0965) { out[n++] = 0xE7; continue; }"""
+new_u2i_danda = """        uint32_t cp = cps[i];
+        if(cp < 0x80) { 
+            if(cur != SCRIPT_ASCII && cur != SCRIPT_UNSUPPORTED) { out[n++]=0xEF; out[n++]=0x41; cur=SCRIPT_ASCII; }
+            out[n++] = (byte_t)cp; continue; 
+        }
+        /* Danda and double-danda are shared across all scripts (in Devanagari block) */
+        if(cp == 0x0964 || cp == 0x0965) {
+            if(cur == SCRIPT_ASCII || cur == SCRIPT_UNSUPPORTED) {
+                out[n++]=0xEF; out[n++]=iscii_code_from_script(SCRIPT_HINDI); cur=SCRIPT_HINDI;
+            }
+            out[n++] = (cp == 0x0964) ? 0xE6 : 0xE7;
+            continue;
+        }"""
+code = code.replace(old_u2i_danda, new_u2i_danda)
+
+# 9. Emit explicit FA19 switches on spaces
+old_ascii_switch = """        /* ASCII and UTF-8 Passthrough in SCRIPT_ASCII mode */
+        if(b < 128 || (cur_script == SCRIPT_ASCII && b != 0xEF)) {
+            if(cur_script != SCRIPT_ASCII) {
+                prev_script = cur_script; cur_script = SCRIPT_ASCII;
+                active_script = cur_script; prev_syl = SYL_INVALID;
+            }
+            syls[ns++] = ASCII_START + b;
+            continue;
+        }"""
+new_ascii_switch = """        /* ASCII and UTF-8 Passthrough in SCRIPT_ASCII mode */
+        if(b < 128 || (cur_script == SCRIPT_ASCII && b != 0xEF)) {
+            if(cur_script != SCRIPT_ASCII) {
+                syls[ns++] = SWITCH_CODE | (byte_t)SCRIPT_ASCII;
+                scripts[nsc++] = SCRIPT_ASCII;
+                prev_script = cur_script; cur_script = SCRIPT_ASCII;
+                active_script = cur_script; prev_syl = SYL_INVALID;
+            }
+            syls[ns++] = ASCII_START + b;
+            continue;
+        }"""
+# In case we previously removed the if block:
+old_ascii_switch2 = """        /* ASCII and UTF-8 Passthrough in SCRIPT_ASCII mode */
+        if(b < 128 || (cur_script == SCRIPT_ASCII && b != 0xEF)) {
+            syls[ns++] = ASCII_START + b;
+            prev_syl = SYL_INVALID;
+            continue;
+        }"""
+code = code.replace(old_ascii_switch, new_ascii_switch)
+code = code.replace(old_ascii_switch2, new_ascii_switch)
+
+# 10. Fix array allocations
+code = code.replace(
+    'imli_script_t *scripts = (imli_script_t*)malloc(256*sizeof(imli_script_t));',
+    'imli_script_t *scripts = (imli_script_t*)malloc((iscii1_len+256)*sizeof(imli_script_t));'
+)
+code = code.replace(
+    'imli_script_t *sc=(imli_script_t*)malloc(256*sizeof(imli_script_t));',
+    'imli_script_t *sc=(imli_script_t*)malloc((len+256)*sizeof(imli_script_t));'
+)
+
 with open('build_converter.py', 'w') as f:
     f.write(code)
-
